@@ -1,4 +1,4 @@
-name: Sync grill-me from upstream
+name: Sync productivity skills from upstream
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-grill-me-upstream
+  group: sync-productivity-skills-upstream
   cancel-in-progress: true
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - name: Check out mirror repository
         uses: actions/checkout@v5
 
-      - name: Fetch grill-me from upstream
+      - name: Fetch productivity skills from upstream
         shell: bash
         run: |
           upstream_dir="$RUNNER_TEMP/mattpocock-skills"
@@ -35,24 +35,28 @@ jobs:
             "$upstream_dir"
 
           git -C "$upstream_dir" sparse-checkout set \
-            skills/productivity/grill-me
+            skills/productivity/grill-me \
+            skills/productivity/grilling
 
       - name: Synchronize mirrored files
         shell: bash
         run: |
           upstream_dir="$RUNNER_TEMP/mattpocock-skills"
 
-          mkdir -p skills/grill-me
+          mkdir -p skills/grill-me skills/grilling
           rsync -a --delete \
             "$upstream_dir/skills/productivity/grill-me/" \
             skills/grill-me/
+          rsync -a --delete \
+            "$upstream_dir/skills/productivity/grilling/" \
+            skills/grilling/
 
           cp "$upstream_dir/LICENSE" UPSTREAM_LICENSE
 
       - name: Commit upstream changes
         shell: bash
         run: |
-          git add skills/grill-me UPSTREAM_LICENSE
+          git add skills/grill-me skills/grilling UPSTREAM_LICENSE
 
           if git diff --cached --quiet; then
             echo "No upstream changes detected."
@@ -68,5 +72,5 @@ jobs:
             "41898282+github-actions[bot]@users.noreply.github.com"
 
           git commit -m \
-            "chore(sync): update grill-me from mattpocock/skills@${upstream_sha}"
+            "chore(sync): update productivity skills from mattpocock/skills@${upstream_sha}"
           git push
