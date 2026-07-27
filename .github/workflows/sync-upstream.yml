@@ -1,0 +1,72 @@
+name: Sync grill-me from upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 10:17 Asia/Shanghai (02:17 UTC).
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-grill-me-upstream
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out mirror repository
+        uses: actions/checkout@v4
+
+      - name: Fetch grill-me from upstream
+        shell: bash
+        run: |
+          upstream_dir="$RUNNER_TEMP/mattpocock-skills"
+
+          git clone \
+            --depth 1 \
+            --filter=blob:none \
+            --sparse \
+            --branch main \
+            https://github.com/mattpocock/skills.git \
+            "$upstream_dir"
+
+          git -C "$upstream_dir" sparse-checkout set \
+            skills/productivity/grill-me
+
+      - name: Synchronize mirrored files
+        shell: bash
+        run: |
+          upstream_dir="$RUNNER_TEMP/mattpocock-skills"
+
+          mkdir -p skills/grill-me
+          rsync -a --delete \
+            "$upstream_dir/skills/productivity/grill-me/" \
+            skills/grill-me/
+
+          cp "$upstream_dir/LICENSE" UPSTREAM_LICENSE
+
+      - name: Commit upstream changes
+        shell: bash
+        run: |
+          git add skills/grill-me UPSTREAM_LICENSE
+
+          if git diff --cached --quiet; then
+            echo "No upstream changes detected."
+            exit 0
+          fi
+
+          upstream_sha="$(
+            git -C "$RUNNER_TEMP/mattpocock-skills" rev-parse --short HEAD
+          )"
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git commit -m \
+            "chore(sync): update grill-me from mattpocock/skills@${upstream_sha}"
+          git push
